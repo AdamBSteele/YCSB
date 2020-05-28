@@ -19,7 +19,6 @@ package site.ycsb;
 
 import site.ycsb.measurements.Measurements;
 import site.ycsb.measurements.exporter.MeasurementsExporter;
-import site.ycsb.measurements.exporter.TextMeasurementsExporter;
 import org.apache.htrace.core.HTraceConfiguration;
 import org.apache.htrace.core.TraceScope;
 import org.apache.htrace.core.Tracer;
@@ -212,29 +211,29 @@ public final class Client {
    * @throws IOException Either failed to write to output stream or failed to close it.
    */
   private static void exportMeasurements(Properties props, int opcount, long runtime)
-      throws IOException {
+      throws Exception {
     MeasurementsExporter exporter = null;
     try {
-      // if no destination file is provided the results will be written to stdout
-      OutputStream out;
-      String exportFile = props.getProperty(EXPORT_FILE_PROPERTY);
-      if (exportFile == null) {
-        out = System.out;
-      } else {
-        out = new FileOutputStream(exportFile);
-      }
-
-      // if no exporter is provided the default text one will be used
+      // If no exporter is provided the default text one will be used
       String exporterStr = props.getProperty(EXPORTER_PROPERTY,
           "site.ycsb.measurements.exporter.TextMeasurementsExporter");
+
+      // Try constructing the exporter
       try {
-        exporter = (MeasurementsExporter) Class.forName(exporterStr).getConstructor(OutputStream.class)
+        exporter = (MeasurementsExporter) Class.forName(exporterStr)
+            .getConstructor(Properties.class)
+            .newInstance(props);
+      } catch (NoSuchMethodException e) {
+        //  No constructor found that accepts Properties. Try OutputStream
+        OutputStream out;
+        String exportFile = props.getProperty(EXPORT_FILE_PROPERTY);
+        out = (exportFile == null) ? System.out : new FileOutputStream(exportFile);
+
+        exporter = (MeasurementsExporter) Class.forName(exporterStr)
+            .getConstructor(OutputStream.class)
             .newInstance(out);
-      } catch (Exception e) {
-        System.err.println("Could not find exporter " + exporterStr
-            + ", will use default text reporter.");
-        e.printStackTrace();
-        exporter = new TextMeasurementsExporter(out);
+      } catch (ClassNotFoundException e) {
+        throw new RuntimeException("Could not find exporter " + exporterStr, e);
       }
 
       exporter.write("OVERALL", "RunTime(ms)", runtime);
@@ -268,7 +267,7 @@ public final class Client {
       Measurements.getMeasurements().exportMeasurements(exporter);
     } finally {
       if (exporter != null) {
-        exporter.close();
+        exporter.close();  
       }
     }
   }
@@ -387,11 +386,9 @@ public final class Client {
       System.exit(0);
     }
 
-    try {
-      try (final TraceScope span = tracer.newScope(CLIENT_EXPORT_MEASUREMENTS_SPAN)) {
-        exportMeasurements(props, opsDone, en - st);
-      }
-    } catch (IOException e) {
+    try (final TraceScope span = tracer.newScope(CLIENT_EXPORT_MEASUREMENTS_SPAN)) {
+      exportMeasurements(props, opsDone, en - st);
+    } catch (Exception e) {
       System.err.println("Could not export measurements, error: " + e.getMessage());
       e.printStackTrace();
       System.exit(-1);
