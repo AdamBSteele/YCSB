@@ -16,12 +16,11 @@
  */
 package site.ycsb.db.cloudspanner;
 
-import com.google.common.base.Joiner;
-import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.Key;
-import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.KeyRange;
+import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.ResultSet;
@@ -32,14 +31,7 @@ import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.StructReader;
 import com.google.cloud.spanner.TimestampBound;
-import site.ycsb.ByteIterator;
-import site.ycsb.Client;
-import site.ycsb.DB;
-import site.ycsb.DBException;
-import site.ycsb.Status;
-import site.ycsb.StringByteIterator;
-import site.ycsb.workloads.CoreWorkload;
-
+import com.google.common.base.Joiner;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,9 +39,16 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.concurrent.TimeUnit;
+import site.ycsb.ByteIterator;
+import site.ycsb.Client;
+import site.ycsb.DB;
+import site.ycsb.DBException;
+import site.ycsb.Status;
+import site.ycsb.StringByteIterator;
+import site.ycsb.workloads.CoreWorkload;
 
 /**
  * YCSB Client for Google's Cloud Spanner.
@@ -137,10 +136,8 @@ public class CloudSpannerClient extends DB {
     String table = properties.getProperty(CoreWorkload.TABLENAME_PROPERTY, CoreWorkload.TABLENAME_PROPERTY_DEFAULT);
     final String fieldprefix = properties.getProperty(CoreWorkload.FIELD_NAME_PREFIX,
                                                       CoreWorkload.FIELD_NAME_PREFIX_DEFAULT);
-    standardQuery = new StringBuilder()
-        .append("SELECT * FROM ").append(table).append(" WHERE id=@key").toString();
-    standardScan = new StringBuilder()
-        .append("SELECT * FROM ").append(table).append(" WHERE id>=@startKey LIMIT @count").toString();
+    standardQuery = "SELECT * FROM " + table + " WHERE id=@key";
+    standardScan = "SELECT * FROM " + table + " WHERE id>=@startKey LIMIT @count";
     for (int i = 0; i < fieldCount; i++) {
       STANDARD_FIELDS.add(fieldprefix + i);
     }
